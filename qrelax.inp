@@ -1,0 +1,57 @@
+! Number of Frames
+.frames
+200 
+
+! Timestep between consecutive frames (ps)
+.timestep 
+0.25 
+
+! Directory containing the outputs of ADF/ORCA
+.EFGoutputs
+ORCA  
+
+! Read EFGs for one or more atom(s)
+! Line 1: number of atoms 
+! Line 2: atom list
+.EquivNuclei
+45
+6 7 8  21 22 23  36 37 38  51 52 53  66 67 68  81 82 83  96 97 98  111 112 113  126 127 128  141 142 143  156 157 158  171 172 173  186 187 188  201 202 203  216 217 218
+
+! Will create the CSV file required by dynpy to perform quadrupole relaxation analysis
+!DYNPY
+
+! Read EFGs generated using ORCA code (Default is ADF)
+ORCA
+
+! ACFs from ensemble averages
+! (use only for testing purposes)
+!ACF_ENSAV
+
+! Limit Time (ps) for the EFG autocorrelation function
+! "if time > LimitTime, then ACF = 0"
+!.LimitTime
+!40.
+
+! Change timestep (ps) to 'SplineTimeStep' using spline interpolation
+!.SplineTimeStep
+!0.01
+
+! Larmor frequency of the proton (MHz)
+.Proton_Frequency
+500
+
+! Atomic mass (A) and Atom symbol
+.Isotope
+2H
+
+! If on, the components of EFG-ACF are replaced with the average value
+!ForceIsotropy
+
+! Read ACFs from files
+! Line 1: numbers of ACF files
+! Line 2 to N: location of ACFs
+!.READ_ACF
+! 2
+!acf_efg_wk.dat
+!acf_efg.iso
+
