@@ -992,7 +992,7 @@ real(8), external :: ACFfunc
 
 pi = 4.d0*DATAN(1.d0)
 
-if (LTIME) write(*,'(/A,F5.2/A/)') &
+if (LTIME) write(*,'(/A,F10.2/A/)') &
 " Limit Time (in ps): t_lim = ",limtime, &
 " ACF(EFG)(tau > t_lim) = Zero "
 
