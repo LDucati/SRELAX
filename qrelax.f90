@@ -19,10 +19,10 @@ real(8), parameter :: hbar=1.054571817D-34, hartree=4.3597447222060D-18, a0=5.29
 
 ! Static allocation
 real(8)            :: timestep, splstep, limtime, Ispin, Qmom, B0ext, gammaI, &
-                      sigmaEFG(5), GlmRe(5), GlmENR(5)
+                      sigmaEFG(5), GlmRe(5), GlmENR(5), SDmin, SDmax
 integer            :: nQNUC, nframes, splframes, natom, nacfs
 integer, parameter :: DYNPYU=10, acfflen=160
-logical            :: ORCA, DYNPY, ACF_ENSAV, LTIME, RACF, ACF_AVG
+logical            :: ORCA, DYNPY, ACF_ENSAV, LTIME, RACF, ACF_AVG, PrintSD
 character          :: trajdir*50, symbol*3, asymbol*2
 
 ! vector to label componentes of the 2nd-rank 
@@ -228,7 +228,7 @@ logical   :: Isotp=.FALSE.
 ! Initializing some input vars
 nQNUC=0; splframes=0; nframes=0
 limtime=0.d0; Ispin=0.d0; Qmom=0.d0; timestep=0.d0; splstep=0.d0; B0ext=0.d0; gammaI=0.d0
-ORCA=.FALSE.; DYNPY=.FALSE.; ACF_ENSAV=.FALSE.; LTIME=.FALSE.; ACF_AVG=.FALSE.
+ORCA=.FALSE.; DYNPY=.FALSE.; ACF_ENSAV=.FALSE.; LTIME=.FALSE.; ACF_AVG=.FALSE.; PrintSD=.FALSE.
 
 ! Opening input file 'qrelax.inp'
 open(01,file='qrelax.inp',status='old',iostat=ios)
@@ -344,6 +344,16 @@ open(01,file='qrelax.inp',status='old',iostat=ios)
     if ( line(1:17) == '.Proton_Frequency' ) then
        call COMMENT(01)
        read(01,*) ProtonFq
+    endif
+
+! Printing spectral densities
+    if ( line(1:16) == '.SpectralDensity' ) then
+       PrintSD = .TRUE.
+       call COMMENT(01)
+       read(01,*) SDmin, SDmax
+       write(*,"(/A/A,F10.2,A,F8.2,A/)") & 
+" Spectral Densities will be calculated for magnetic fields (in T)",&
+" within the interval: [", SDmin,",", SDmax,"]"
     endif
 
  end do
@@ -983,12 +993,15 @@ SUBROUTINE SpectDens()
 Use shared_vars
 Implicit None
 
-integer :: ios, frm, mcom
-real(8) :: time, cs, sn, w0
+integer :: ios, frm, mcom, iw0
+real(8) :: time, cs, sn, w0, wstep
 real(8) :: AvgRe, AvgIm
 
 real(8)           :: SINT, y2(nframes), pi
 real(8), external :: ACFfunc
+
+integer, parameter :: NptsSD=1000
+real(8), dimension(:,:), allocatable :: SDen
 
 pi = 4.d0*DATAN(1.d0)
 
@@ -1073,6 +1086,50 @@ do mcom=1,5
    GlmENR(mcom) = SINT
 
 end do
+
+! Calculating Spectral Densities for a selected range of Larmor frequencies
+if (PrintSD) then
+
+! Allocating memory to store spectral densities
+   allocate(SDen(5,NptsSD), STAT=ios)
+   call AllocStat(ios,'SDen','SpectDens','A')
+
+! Loop over frequencies (in rad/s)
+   SDmin = SDmin * gammaI * 1.d6 * 2.d0*pi
+   SDmax = SDmax * gammaI * 1.d6 * 2.d0*pi
+   wstep = (SDmax-SDmin)/dfloat(NptsSD-1)
+   do mcom=1,5
+      do iw0=1,NptsSD
+         w0 = (SDmin + wstep*dfloat(iw0-1))
+         do frm=1,nframes
+             time = DBLE(frm-1)*timestep
+             Xspl(frm) = time
+             cs = DCOS( DBLE(mvec(mcom)) * w0 * time * 1.D-12 )
+             sn = DSIN( DBLE(mvec(mcom)) * w0 * time * 1.D-12 )
+             Fspl(frm) = ACFre(mcom,frm) * cs -ACFim(mcom,frm) * sn
+         end do
+         call y2spline(Xspl,Fspl,nframes,y2)
+         call simpson(ACFfunc,nframes,Xspl,Fspl,y2,Xspl(1),Xspl(nframes),SINT)
+         SDen(mcom,iw0) = SINT
+      end do
+   end do
+   open(20,file='spectden.dat',status='unknown')
+       SDmin = SDmin / 1.d6 / 2.d0 / pi
+       SDmax = SDmax / 1.d6 / 2.d0 / pi
+       wstep = wstep / 1.d6 / 2.d0 / pi
+       write(20,"(/A/A,F10.2,A,F10.2,A/)") &
+"# Spectral Densities, in units of (Eh x e^-1 x a0^-2)^2 x ps, calculated for", &
+"# Larmor frequencies (in MHz) within the range: [", SDmin,",", SDmax,"]"
+       write(20,'(2A)') &
+"# Larmor Freq./MHz      Re(g_{20})/a.u.     Re(g_{2+1})/a.u.    Re(g_{2-1})/a.u.    Re(g_{2+2})/a.u.    Re(g_{2-2})/a.u."
+       do iw0=1,NptsSD
+          w0 = (SDmin + wstep*dfloat(iw0-1))  
+          write(20,'(F20.10,5E20.10)') w0, (SDen(mcom,iw0),mcom=1,5)
+       end do
+   close(20)
+   if (allocated(SDen)) deallocate(SDen, STAT=ios)
+   call AllocStat(ios,'SDen','SpectDens','D')
+endif
 
 ! deallocating Spline arrays
 if (allocated(Xspl)) deallocate(Xspl, STAT=ios)
