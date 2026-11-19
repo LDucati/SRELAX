@@ -1,16 +1,19 @@
 
-The QRELAX code is composed of a single file: 
+The SRELAX code is composed of a single file: 
 
-i)   qrelax.f90: program written in Fortran 90 language
+i)   srelax.f90: program written in Fortran 90 language
 
-To generate the executable (qrelax.x), edit the BASH script compile.sh, 
+To generate the executable (srelax.x), edit the BASH script compile.sh, 
 inserting the Fortran compiler and compilation flags of choice, then type: 
 
 % ./compile.sh
 
-The QRELAX input file is called "qrelax.inp," and its available options are 
+The SRELAX input file is called "srelax.inp," and its available options are 
 contained in the subroutine "read_input()." 
 
+**********************
+QUADRUPOLAR RELAXATION
+**********************
 Here, we provide a sample input file with several available options commented out. 
 We also included the "ORCA" directory containing 400 frames from trajectory 2 
 of the article, used to generate the last line of Table 2. 
@@ -21,7 +24,7 @@ EFG.xyz file, making the calculation of the relaxation properties much faster.
 
 First type
 
-% ./qrelax.x 
+% ./srelax.x 
 
 to perform the commented extraction operation. By doing so, the R1 and R2 rates 
 shown in Table 2 are calculated. 
